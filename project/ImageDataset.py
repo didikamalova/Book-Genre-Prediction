@@ -7,6 +7,7 @@ import utils
 
 img_dir = '224x224';
 
+
 class ImageDataset(Dataset):
     def __init__(self, csv_path, transform):
         images, labels = utils.load_data(csv_path)
