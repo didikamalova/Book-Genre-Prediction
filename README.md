@@ -85,3 +85,64 @@ Accuracy of the network on the 45600 train images: 13.875%
 Accuracy of the network on the 5700 val images: 10.929824561403509%
 ==================================================
 ```
+### Updated Model 2 and Hyperparams:
+```
+batch_size = 32
+learning_rate = 0.001
+num_epochs = 200
+
+reg = "l2"
+lambda_l1 = 0.0001
+lambda_l2 = 0.001
+
+aug = torchvision.transforms.Compose([
+      torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+class Model(nn.Module):
+    def __init__(self, num_classes=30):
+        super(Model, self).__init__()
+        # input = 224 x 224 x 3
+        self.conv1 = nn.Conv2d(3, 10, 5)          # 220 x 220 x 10
+        self.pool1 = nn.MaxPool2d(2, 2)           # 110 x 110 x 10
+        self.conv2 = nn.Conv2d(10, 20, 5)         # 106 x 106 x 20
+        self.pool2 = nn.MaxPool2d(2, 2)           #  53 x  53 x 20
+        self.conv3 = nn.Conv2d(20, 32, 3)         #  51 x  51 x 32
+        self.pool3 = nn.MaxPool2d(2, 2)           #  25 x  25 x 32
+        self.fc1 = nn.Linear(25 * 25 * 32, 30)    #        30
+
+    def forward(self, x):
+        # run your data through the layers
+        x = self.pool1(F.dropout(F.relu(self.conv1(x))))
+        x = self.pool2(F.dropout(F.relu(self.conv2(x))))
+        x = self.pool3(F.dropout(F.relu(self.conv3(x))))
+        x = x.view(-1, 25 * 25 * 32)
+        x = self.fc1(x).squeeze()
+        return x
+```
+#### Results:
+```
+==================================================
+Initial Evaluation: 
+Accuracy of the network on the 45600 train images: 3.414473684210526%
+Accuracy of the network on the 5700 val images: 3.6491228070175437%
+==================================================
+Accuracy of the network on the 45600 train images: 5.921052631578948%
+Accuracy of the network on the 5700 val images: 5.157894736842105%
+==================================================
+Accuracy of the network on the 45600 train images: 9.80921052631579%
+Accuracy of the network on the 5700 val images: 8.859649122807017%
+==================================================
+Accuracy of the network on the 45600 train images: 12.096491228070175%
+Accuracy of the network on the 5700 val images: 9.280701754385966%
+==================================================
+Accuracy of the network on the 45600 train images: 7.482456140350878%
+Accuracy of the network on the 5700 val images: 6.56140350877193%
+==================================================
+Accuracy of the network on the 45600 train images: 11.677631578947368%
+Accuracy of the network on the 5700 val images: 8.56140350877193%
+==================================================
+Accuracy of the network on the 45600 train images: 8.62938596491228%
+Accuracy of the network on the 5700 val images: 6.578947368421052%
+==================================================
+```
