@@ -17,6 +17,12 @@ if __name__ == "__main__":
 
     # For M1 Macs
     device = torch.device('mps')
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        x = torch.ones(1, device=device)
+        print(x)
+    else:
+        print("MPS device not found.")
 
     # TRAINING & VAL DATASET
     train_val_data_dir = 'bookcover30-labels-train.csv'
@@ -36,13 +42,17 @@ if __name__ == "__main__":
     print(len(train_set), len(val_set), len(test_set))
 
     # HYPERPARAMS
-    batch_size = 64
+    batch_size = 32
     learning_rate = 0.001
     num_epochs = 200
 
+    reg = "l2"
+    lambda_l1 = 0.00001
+    lambda_l2 = 0.0001
+
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
-        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+          torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     # DATA LOADERS
@@ -65,13 +75,14 @@ if __name__ == "__main__":
     evaluate(model, train_loader, device, name="train")
     evaluate(model, val_loader, device, name="val")
     print("=" * 50)
-    for epoch in range(num_epochs):  # loop over the dataset multiple times
+    for ix, epoch in enumerate(range(num_epochs), start=1):  # loop over the dataset multiple times
         # TRAINING
+        print(f'EPOCH {ix}')
         running_loss = 0.0
-        for i, (inputs, labels) in enumerate(train_loader, 0):
+        for i, (inputs, labels) in enumerate(train_loader):
             # get the inputs; data is a list of [inputs, labels]
-            inputs = inputs.to(device=device)
-            labels = labels.to(device=device)
+            inputs = aug(inputs.to(device=device).to(dtype=torch.float32))
+            labels = labels.type(torch.LongTensor).to(device=device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -79,11 +90,25 @@ if __name__ == "__main__":
             # forward + backward + optimize
             outputs = model(inputs)
             loss = criterion(outputs, labels)
+
+            if (reg == 'l1'):
+                l1 = 0
+                for p in model.parameters():
+                    l1 += p.abs().sum()
+                    loss += lambda_l1 * l1
+            elif (reg == 'l2'):
+                l2 = 0
+                for p in model.parameters():
+                    l2 += p.pow(2.0).sum()
+                    loss += lambda_l2 * l2
+
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
 
-            # print statistics
             running_loss += loss.item()
+
+            # print statistics
             """
             if i % 2000 == 1999:    # print every 2000 mini-batches
                 print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))

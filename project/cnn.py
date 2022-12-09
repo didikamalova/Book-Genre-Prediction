@@ -16,9 +16,9 @@ class Model(nn.Module):
 
     def forward(self, x):
         # run your data through the layers
-        x = self.pool1(F.relu(self.conv1(x)))
-        x = self.pool2(F.relu(self.conv2(x)))
-        x = self.pool3(F.relu(self.conv3(x)))
+        x = self.pool1(F.dropout(F.relu(self.conv1(x))))
+        x = self.pool2(F.dropout(F.relu(self.conv2(x))))
+        x = self.pool3(F.dropout(F.relu(self.conv3(x))))
         x = x.view(-1, 25 * 25 * 32)
         x = self.fc1(x).squeeze()
         return x

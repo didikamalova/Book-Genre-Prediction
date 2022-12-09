@@ -1,12 +1,7 @@
 from torch.utils.data import Dataset
-from PIL import Image
-import pandas as pd
-import os
-import numpy as np
 import utils
 
 img_dir = '224x224';
-
 
 class ImageDataset(Dataset):
     def __init__(self, csv_path, transform):
