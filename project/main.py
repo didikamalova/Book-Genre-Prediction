@@ -3,6 +3,7 @@ import torchvision
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 from cnn import Model
 from ImageDataset import ImageDataset
 from evaluate import evaluate
@@ -15,14 +16,21 @@ if __name__ == "__main__":
         torchvision.transforms.ToTensor(),
     ])
 
+    torch.backends.cudnn.benchmark = True
+
     # For M1 Macs
     device = torch.device('mps')
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-        x = torch.ones(1, device=device)
-        print(x)
-    else:
-        print("MPS device not found.")
+
+    # # TRAINING & VAL DATASET
+    # train_val_data_dir = 'bookcover30-labels-train.csv'
+    # # NOTE: takes ~2 min to fully load data, find a way to make this faster or so we don't have to do it everytime
+    # train_val_set = ImageDataset(train_val_data_dir, transform)
+
+    # val_ratio = 1/9
+    # val_len = int(len(train_val_set)*val_ratio)
+    # train_len = len(train_val_set) - val_len
+    # train_set, val_set = torch.utils.data.random_split(train_val_set, [train_len, val_len],
+    #                                                    generator=torch.Generator().manual_seed(229))
 
     # TRAINING & VAL DATASET
     train_val_data_dir = 'bookcover30-labels-train.csv'
@@ -30,10 +38,10 @@ if __name__ == "__main__":
     train_val_set = ImageDataset(train_val_data_dir, transform)
 
     val_ratio = 1/9
-    val_len = int(len(train_val_set)*val_ratio)
-    train_len = len(train_val_set) - val_len
-    train_set, val_set = torch.utils.data.random_split(train_val_set, [train_len, val_len],
-                                                       generator=torch.Generator().manual_seed(229))
+    throw_ratio = 2/3
+    throwaway, train_set, val_set = \
+        torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
+                                      generator=torch.Generator().manual_seed(229))
 
     # TESTING DATASET
     test_data_dir = 'bookcover30-labels-test.csv'
@@ -42,17 +50,14 @@ if __name__ == "__main__":
     print(len(train_set), len(val_set), len(test_set))
 
     # HYPERPARAMS
-    batch_size = 32
-    learning_rate = 0.001
-    num_epochs = 200
-
-    reg = "l2"
-    lambda_l1 = 0.00001
-    lambda_l2 = 0.0001
+    batch_size = 256
+    learning_rate = 0.0001
+    num_epochs = 100
 
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
-          torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+          torchvision.transforms.RandomHorizontalFlip(p=0.5),
+          torchvision.transforms.RandomVerticalFlip(p=0.5),
     ])
 
     # DATA LOADERS
@@ -63,7 +68,7 @@ if __name__ == "__main__":
     # TRAINING
     model = Model().to(device=device)
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
     start_time = time.time()
 
@@ -79,29 +84,17 @@ if __name__ == "__main__":
         # TRAINING
         print(f'EPOCH {ix}')
         running_loss = 0.0
-        for i, (inputs, labels) in enumerate(train_loader):
+        for i, (inputs, labels) in enumerate(tqdm(train_loader)):
             # get the inputs; data is a list of [inputs, labels]
             inputs = aug(inputs.to(device=device).to(dtype=torch.float32))
             labels = labels.type(torch.LongTensor).to(device=device)
 
             # zero the parameter gradients
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             # forward + backward + optimize
             outputs = model(inputs)
             loss = criterion(outputs, labels)
-
-            if (reg == 'l1'):
-                l1 = 0
-                for p in model.parameters():
-                    l1 += p.abs().sum()
-                    loss += lambda_l1 * l1
-            elif (reg == 'l2'):
-                l2 = 0
-                for p in model.parameters():
-                    l2 += p.pow(2.0).sum()
-                    loss += lambda_l2 * l2
-
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             optimizer.step()
@@ -138,20 +131,6 @@ if __name__ == "__main__":
     model = Model().to(device=device)
     model.load_state_dict(torch.load(PATH))
 
-    correct = 0
-    total = 0
-    # since we're not training, we don't need to calculate the gradients for our outputs
-    with torch.no_grad():
-        for data in test_loader:
-            images, labels = data
-            # Similar to the previous question, calculate model's output and the percentage as correct / total
-            ### YOUR CODE HERE
-            _, predicted = torch.max(model(images), 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-            ### END YOUR CODE
-
-    print('Accuracy of the network on the test images: %d %%' % (
-        100 * correct / total))
+    evaluate(model, test_loader, device, name='test')
 
     

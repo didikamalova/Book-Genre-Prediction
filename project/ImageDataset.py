@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 import utils
 
-img_dir = '224x224';
+img_dir = '224x224'
 
 class ImageDataset(Dataset):
     def __init__(self, csv_path, transform):
