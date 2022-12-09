@@ -53,3 +53,5 @@ def get_confusion_matrix(model, data_loader):
     plt.figure(figsize=(12, 7))
     sn.heatmap(df_cm, annot=True)
     plt.savefig('output.png')
+
+

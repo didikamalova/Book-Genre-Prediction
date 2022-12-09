@@ -29,13 +29,14 @@ if __name__ == "__main__":
         torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
                                       generator=torch.Generator().manual_seed(229))
 
-    print(len(train_set), len(val_set))
+    print("length of train set: " + str(len(train_set)))
+    print("length of val set: " + str(len(val_set)))
 
     # HYPERPARAMS
     batch_size = 64
     learning_rate = 0.001
-    num_epochs = 200
-    reg_lambda = 1e-5
+    num_epochs = 4
+    reg_lambda = 1e-6
 
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
@@ -107,21 +108,4 @@ if __name__ == "__main__":
 
     model = Model().to(device=device)
     model.load_state_dict(torch.load(PATH))
-
-    correct = 0
-    total = 0
-    # since we're not training, we don't need to calculate the gradients for our outputs
-    with torch.no_grad():
-        for data in test_loader:
-            images, labels = data
-            # Similar to the previous question, calculate model's output and the percentage as correct / total
-            ### YOUR CODE HERE
-            _, predicted = torch.max(model(images), 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-            ### END YOUR CODE
-
-    print('Accuracy of the network on the test images: %d %%' % (
-        100 * correct / total))
-
     
