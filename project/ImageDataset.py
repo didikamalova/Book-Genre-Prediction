@@ -1,12 +1,13 @@
+import numpy as np
 from torch.utils.data import Dataset
 import utils
 
-img_dir = '224x224';
+img_dir = '224x224'
+
 
 class ImageDataset(Dataset):
     def __init__(self, csv_path, transform):
         images, labels = utils.load_data(csv_path)
-
         self.images = images
         self.labels = labels
         self.transform = transform
@@ -40,7 +41,7 @@ class ImageDataset(Dataset):
     def get_label(self, idx):
         """Returns the label of the idx'th example in the dataset"""
         return self.labels[idx]
-    
+
     def __getitem__(self, idx):
         """Returns a tuple of the *transformed* image and label of the idx'th example in the dataset"""
         return (self.transform(self.images[idx]), self.labels[idx])
