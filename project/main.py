@@ -24,7 +24,7 @@ if __name__ == "__main__":
     train_val_set = ImageDataset(train_val_data_dir, transform)
 
     val_ratio = 1/9
-    throw_ratio = 2/3
+    throw_ratio = 1/10
     throwaway, train_set, val_set = \
         torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
                                       generator=torch.Generator().manual_seed(229))
@@ -39,7 +39,8 @@ if __name__ == "__main__":
 
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
-          torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        torchvision.transforms.RandomHorizontalFlip(p=0.5),
+        torchvision.transforms.RandomVerticalFlip(p=0.5),
     ])
 
     # DATA LOADERS
