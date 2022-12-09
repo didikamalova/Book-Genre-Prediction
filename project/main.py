@@ -3,6 +3,8 @@ import torchvision
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from PIL import Image
 from tqdm import tqdm
 from cnn import Model
 from ImageDataset import ImageDataset
@@ -14,6 +16,7 @@ if __name__ == "__main__":
 
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     torch.backends.cudnn.benchmark = True
@@ -50,14 +53,15 @@ if __name__ == "__main__":
     print(len(train_set), len(val_set), len(test_set))
 
     # HYPERPARAMS
-    batch_size = 256
+    batch_size = 128
     learning_rate = 0.0001
-    num_epochs = 100
+    num_epochs = 4
+    reg_lambda = 1e-6
 
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
           torchvision.transforms.RandomHorizontalFlip(p=0.5),
-          torchvision.transforms.RandomVerticalFlip(p=0.5),
+          torchvision.transforms.RandomVerticalFlip(p=0.5)
     ])
 
     # DATA LOADERS
@@ -65,10 +69,23 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
+    # # Display some images from all_data
+    # figure = plt.figure(figsize=(15, 10))
+    # num_rows = 1
+    # num_cols = 3
+
+    # ds_idx = [13, 29, 43]
+    # for plot_idx, idx in enumerate(ds_idx):
+    #     ax = plt.subplot(num_rows, num_cols, plot_idx + 1) # subplot indices begin at 1, not 0
+    #     ax.title.set_text(train_val_set.get_class(train_val_set.get_label(idx)))
+    #     plt.axis('off')
+    #     plt.imshow(train_val_set.get_image(idx))
+    # plt.show()
+
     # TRAINING
     model = Model().to(device=device)
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=reg_lambda)
 
     start_time = time.time()
 
@@ -125,11 +142,28 @@ if __name__ == "__main__":
     torch.save(model.state_dict(), PATH)
 
     # PREDICT
-    data_iter = iter(test_loader)
-    images, labels = next(data_iter)
-
     model = Model().to(device=device)
     model.load_state_dict(torch.load(PATH))
+
+    # # OUTPUT
+    # train_outputs = []
+    # with torch.no_grad():
+    #     df = pd.read_csv(train_val_data_dir)
+    #     convert_tensor = torchvision.transforms.ToTensor()
+    #     i = 0
+    #     for index, row in tqdm(df.iterrows()):
+    #         filename = row['filename']
+    #         image = Image.open("224x224/" + filename.strip())
+    #         image = convert_tensor(image)
+    #         image = image.to(device=device).to(dtype=torch.float32)
+    #         image = image.unsqueeze(0)
+    #         output = model(image)
+    #         softmax = torch.nn.Softmax(dim = 1)
+    #         output = softmax(output)
+    #         output = output.tolist()[0]
+    #         train_outputs.append(output)
+    # train_outputs_np = np.asarray(train_outputs)
+    # np.savetxt('train_outputs.csv', train_outputs_np, delimiter=',')
 
     evaluate(model, test_loader, device, name='test')
 
