@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.data import Dataset
 import utils
 
-img_dir = '224x224'
+img_dir = '/Users/junhalee/Desktop/CS 229/cs229-project/project/224x224'
 
 
 class ImageDataset(Dataset):
