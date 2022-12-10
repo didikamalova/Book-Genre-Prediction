@@ -42,6 +42,9 @@ if __name__ == "__main__":
     print("length of train set: " + str(len(train_set)))
     print("length of val set: " + str(len(val_set)))
 
+    test_data_dir = 'bookcover30-labels-test.csv'
+    test_set = ImageDataset(test_data_dir, transform)
+
     # HYPERPARAMS
     batch_size = 64
     learning_rate = 0.001
@@ -57,6 +60,7 @@ if __name__ == "__main__":
     # DATA LOADERS
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
     # Display some images from all_data
     # figure = plt.figure(figsize=(15, 10))
