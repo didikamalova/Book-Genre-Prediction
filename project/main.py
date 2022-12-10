@@ -10,7 +10,7 @@ from PIL import Image
 from tqdm import tqdm
 from cnn import Model, FocalLoss
 from ImageDataset import ImageDataset
-from evaluate import evaluate, get_labels
+from evaluate import evaluate, evaluate2, get_labels
 import utils
 
 
@@ -34,44 +34,29 @@ if __name__ == "__main__":
     train_val_set = ImageDataset(train_val_data_dir, transform)
 
     val_ratio = 1/9
-    val_len = int(len(train_val_set)*val_ratio)
-    train_len = len(train_val_set) - val_len
-    train_set, val_set = torch.utils.data.random_split(train_val_set, [train_len, val_len],
-                                                       generator=torch.Generator().manual_seed(229))
+    throw_ratio = 1/10
+    throwaway, train_set, val_set = \
+        torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
+                                      generator=torch.Generator().manual_seed(229))
 
-    # TRAINING & VAL DATASET
-    # train_val_data_dir = 'bookcover30-labels-train.csv'
-    # # NOTE: takes ~2 min to fully load data, find a way to make this faster or so we don't have to do it everytime
-    # train_val_set = ImageDataset(train_val_data_dir, transform)
-
-    # val_ratio = 1/9
-    # throw_ratio = 2/3
-    # throwaway, train_set, val_set = \
-    #     torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
-    #                                 generator=torch.Generator().manual_seed(229))
-
-    # TESTING DATASET
-    test_data_dir = 'bookcover30-labels-test.csv'
-    test_set = ImageDataset(test_data_dir, transform)
-
-    print(len(train_set), len(val_set), len(test_set))
+    print("length of train set: " + str(len(train_set)))
+    print("length of val set: " + str(len(val_set)))
 
     # HYPERPARAMS
     batch_size = 64
     learning_rate = 0.001
-    num_epochs = 10
+    num_epochs = 4
     reg_lambda = 1e-6
 
     # AUGMENTATION
     aug = torchvision.transforms.Compose([
-          torchvision.transforms.RandomHorizontalFlip(p=0.5),
-          torchvision.transforms.RandomVerticalFlip(p=0.5)
+        torchvision.transforms.RandomHorizontalFlip(p=0.5),
+        torchvision.transforms.RandomVerticalFlip(p=0.5),
     ])
 
     # DATA LOADERS
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
     # Display some images from all_data
     # figure = plt.figure(figsize=(15, 10))
@@ -85,6 +70,20 @@ if __name__ == "__main__":
     #     plt.axis('off')
     #     plt.imshow(train_val_set.get_image(idx))
     # plt.show()
+
+    # Display some images from all_data
+    # figure = plt.figure(figsize=(15, 10))
+    # num_rows = 1
+    # num_cols = 3
+
+    # ds_idx = [47, 2004, 704]
+    # for plot_idx, idx in enumerate(ds_idx):
+    #     ax = plt.subplot(num_rows, num_cols, plot_idx + 1) # subplot indices begin at 1, not 0
+    #     ax.title.set_text(train_val_set.get_class(train_val_set.get_label(idx)))
+    #     plt.axis('off')
+    #     plt.imshow(train_val_set.get_image(idx))
+    # plt.show()
+
 
     # TRAINING
     if train:
@@ -126,14 +125,9 @@ if __name__ == "__main__":
 
                 running_loss += loss.item()
 
-                # print statistics
-                """
-                if i % 2000 == 1999:    # print every 2000 mini-batches
-                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 2000))
-                    running_loss = 0.0
-                """
-            train_accuracy = evaluate(model, train_loader, device, name="train")
-            train_loss = running_loss
+        train_accuracy = evaluate(model, train_loader, device, name="train")
+        train_loss = running_loss
+    
 
             # VALIDATION
             with torch.no_grad():
