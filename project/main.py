@@ -6,10 +6,12 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 import seaborn as sn
+from PIL import Image
 from tqdm import tqdm
 from cnn import Model, FocalLoss
 from ImageDataset import ImageDataset
 from evaluate import evaluate, get_labels
+import utils
 
 
 if __name__ == "__main__":
@@ -18,8 +20,7 @@ if __name__ == "__main__":
     np.random.seed(229)
 
     transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        torchvision.transforms.ToTensor()
     ])
 
     torch.backends.cudnn.benchmark = True
@@ -28,26 +29,26 @@ if __name__ == "__main__":
     device = torch.device('mps')
 
     # # TRAINING & VAL DATASET
-    # train_val_data_dir = 'bookcover30-labels-train.csv'
-    # # NOTE: takes ~2 min to fully load data, find a way to make this faster or so we don't have to do it everytime
-    # train_val_set = ImageDataset(train_val_data_dir, transform)
-
-    # val_ratio = 1/9
-    # val_len = int(len(train_val_set)*val_ratio)
-    # train_len = len(train_val_set) - val_len
-    # train_set, val_set = torch.utils.data.random_split(train_val_set, [train_len, val_len],
-    #                                                    generator=torch.Generator().manual_seed(229))
-
-    # TRAINING & VAL DATASET
     train_val_data_dir = 'bookcover30-labels-train.csv'
     # NOTE: takes ~2 min to fully load data, find a way to make this faster or so we don't have to do it everytime
     train_val_set = ImageDataset(train_val_data_dir, transform)
 
     val_ratio = 1/9
-    throw_ratio = 2/3
-    throwaway, train_set, val_set = \
-        torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
-                                    generator=torch.Generator().manual_seed(229))
+    val_len = int(len(train_val_set)*val_ratio)
+    train_len = len(train_val_set) - val_len
+    train_set, val_set = torch.utils.data.random_split(train_val_set, [train_len, val_len],
+                                                       generator=torch.Generator().manual_seed(229))
+
+    # TRAINING & VAL DATASET
+    # train_val_data_dir = 'bookcover30-labels-train.csv'
+    # # NOTE: takes ~2 min to fully load data, find a way to make this faster or so we don't have to do it everytime
+    # train_val_set = ImageDataset(train_val_data_dir, transform)
+
+    # val_ratio = 1/9
+    # throw_ratio = 2/3
+    # throwaway, train_set, val_set = \
+    #     torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
+    #                                 generator=torch.Generator().manual_seed(229))
 
     # TESTING DATASET
     test_data_dir = 'bookcover30-labels-test.csv'
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     print(len(train_set), len(val_set), len(test_set))
 
     # HYPERPARAMS
-    batch_size = 32
+    batch_size = 64
     learning_rate = 0.001
     num_epochs = 10
     reg_lambda = 1e-6
@@ -72,12 +73,12 @@ if __name__ == "__main__":
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
-    # # Display some images from all_data
+    # Display some images from all_data
     # figure = plt.figure(figsize=(15, 10))
     # num_rows = 1
     # num_cols = 3
 
-    # ds_idx = [13, 29, 43]
+    # ds_idx = [47, 2004, 704]
     # for plot_idx, idx in enumerate(ds_idx):
     #     ax = plt.subplot(num_rows, num_cols, plot_idx + 1) # subplot indices begin at 1, not 0
     #     ax.title.set_text(train_val_set.get_class(train_val_set.get_label(idx)))
@@ -88,8 +89,10 @@ if __name__ == "__main__":
     # TRAINING
     if train:
         model = Model().to(device=device)
-        criterion = FocalLoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=reg_lambda)
+        # criterion = FocalLoss()
+        # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
         # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
         start_time = time.time()
@@ -144,34 +147,19 @@ if __name__ == "__main__":
         print(f"Total training time: {end_time - start_time} sec")
 
     PATH = './book_covers.pth'
-    # torch.save(model.state_dict(), PATH)
+    torch.save(model.state_dict(), PATH)
 
     # PREDICT
     model = Model().to(device=device)
     model.load_state_dict(torch.load(PATH))
 
-    # # OUTPUT
-    # train_outputs = []
-    # with torch.no_grad():
-    #     df = pd.read_csv(train_val_data_dir)
-    #     convert_tensor = torchvision.transforms.ToTensor()
-    #     i = 0
-    #     for index, row in tqdm(df.iterrows()):
-    #         filename = row['filename']
-    #         image = Image.open("224x224/" + filename.strip())
-    #         image = convert_tensor(image)
-    #         image = image.to(device=device).to(dtype=torch.float32)
-    #         image = image.unsqueeze(0)
-    #         output = model(image)
-    #         softmax = torch.nn.Softmax(dim = 1)
-    #         output = softmax(output)
-    #         output = output.tolist()[0]
-    #         train_outputs.append(output)
-    # train_outputs_np = np.asarray(train_outputs)
-    # np.savetxt('train_outputs.csv', train_outputs_np, delimiter=',')
+    # OUTPUT CSV
+    utils.get_outputs_csv(model, csv_path=train_val_data_dir, output_path='train_outputs.csv')
+    utils.get_outputs_csv(model, csv_path=test_data_dir, output_path='test_outputs.csv')
 
     evaluate(model, test_loader, device, name='test')
 
+    # CONFUSION MATRIX
     y_pred, y_true = get_labels(model, test_loader)
     cf_matrix = confusion_matrix(y_true, y_pred)
 
