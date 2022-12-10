@@ -4,11 +4,12 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from PIL import Image
+from sklearn.metrics import confusion_matrix
+import seaborn as sn
 from tqdm import tqdm
-from cnn import Model
+from cnn import Model, FocalLoss
 from ImageDataset import ImageDataset
-from evaluate import evaluate
+from evaluate import evaluate, get_labels
 
 
 if __name__ == "__main__":
@@ -53,9 +54,9 @@ if __name__ == "__main__":
     print(len(train_set), len(val_set), len(test_set))
 
     # HYPERPARAMS
-    batch_size = 128
-    learning_rate = 0.0001
-    num_epochs = 4
+    batch_size = 64
+    learning_rate = 0.01
+    num_epochs = 100
     reg_lambda = 1e-6
 
     # AUGMENTATION
@@ -84,8 +85,8 @@ if __name__ == "__main__":
 
     # TRAINING
     model = Model().to(device=device)
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=reg_lambda)
+    criterion = FocalLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
     start_time = time.time()
 
@@ -166,5 +167,15 @@ if __name__ == "__main__":
     # np.savetxt('train_outputs.csv', train_outputs_np, delimiter=',')
 
     evaluate(model, test_loader, device, name='test')
+
+    y_pred, y_true = get_labels(model, test_loader)
+    cf_matrix = confusion_matrix(y_true, y_pred)
+
+    df_cm = pd.DataFrame(cf_matrix/np.sum(cf_matrix) *10, index = [i for i in range(30)],
+                        columns = [i for i in range(30)])
+
+    plt.figure(figsize = (12,7))
+    sn.heatmap(df_cm, annot=True)
+    plt.savefig('output.png')
 
     
