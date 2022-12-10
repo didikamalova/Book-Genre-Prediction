@@ -128,14 +128,13 @@ if __name__ == "__main__":
         train_accuracy = evaluate(model, train_loader, device, name="train")
         train_loss = running_loss
     
-
-            # VALIDATION
-            with torch.no_grad():
-                val_accuracy = evaluate(model, val_loader, device, name="val")
-                if val_accuracy > highest:
-                    highest = val_accuracy
-                    best_model = model
-            print("=" * 50)
+        # VALIDATION
+        with torch.no_grad():
+            val_accuracy = evaluate(model, val_loader, device, name="val")
+            if val_accuracy > highest:
+                highest = val_accuracy
+                best_model = model
+        print("=" * 50)
 
         end_time = time.time()
         print(f"Total training time: {end_time - start_time} sec")
