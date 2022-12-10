@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # HYPERPARAMS
     batch_size = 64
-    learning_rate = 0.01
+    learning_rate = 0.001
     num_epochs = 100
     reg_lambda = 1e-6
 

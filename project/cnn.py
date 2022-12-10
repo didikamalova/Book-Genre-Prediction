@@ -17,9 +17,9 @@ class Model(nn.Module):
 
     def forward(self, x):
         # run your data through the layers
-        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.dropout2d(F.relu(self.conv1(x))), 0.3)
         x = self.pool(F.relu(self.conv2_bn(self.conv2(x))))
-        x = self.pool(F.relu(self.conv3_bn(self.conv3(x))))
+        x = self.pool(F.dropout2d(F.relu(self.conv3_bn(self.conv3(x)))))
         x = torch.flatten(x, 1)
         x = self.fc1(x)
         return x
