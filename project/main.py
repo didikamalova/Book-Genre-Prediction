@@ -34,7 +34,7 @@ if __name__ == "__main__":
     train_val_set = ImageDataset(train_val_data_dir, transform)
 
     val_ratio = 1/9
-    throw_ratio = 1/10
+    throw_ratio = 1/100
     throwaway, train_set, val_set = \
         torch.utils.data.random_split(train_val_set, [(1-val_ratio)*throw_ratio, (1-val_ratio)*(1-throw_ratio), val_ratio],
                                       generator=torch.Generator().manual_seed(229))
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # HYPERPARAMS
     batch_size = 64
     learning_rate = 0.001
-    num_epochs = 4
+    num_epochs = 20
     reg_lambda = 1e-6
 
     # AUGMENTATION
@@ -166,5 +166,3 @@ if __name__ == "__main__":
     plt.figure(figsize = (24,14))
     sn.heatmap(df_cm, annot=True)
     plt.savefig('output.png')
-
-    
